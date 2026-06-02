@@ -7,6 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/krispaisarn/web-otp/internal/db"
 	"github.com/krispaisarn/web-otp/internal/models"
+	"gorm.io/gorm"
 )
 
 type summaryStats struct {
@@ -43,16 +44,20 @@ func Stats(c *fiber.Ctx) error {
 		base = base.Where("email LIKE ?", "%"+em+"%")
 	}
 
+	// Session with clone=1 so each chained call gets its own statement copy,
+	// preventing accumulated WHERE conditions from polluting subsequent queries.
+	baseQ := base.Session(&gorm.Session{})
+
 	var summary summaryStats
 	now := time.Now()
 
-	base.Count(&summary.TotalIssued)
-	base.Where("used = ?", true).Count(&summary.TotalVerified)
-	base.Where("used = ? AND expires_at < ?", false, now).Count(&summary.TotalExpired)
-	base.Where("used = ? AND expires_at >= ?", false, now).Count(&summary.TotalPending)
+	baseQ.Count(&summary.TotalIssued)
+	baseQ.Where("used = ?", true).Count(&summary.TotalVerified)
+	baseQ.Where("used = ? AND expires_at < ?", false, now).Count(&summary.TotalExpired)
+	baseQ.Where("used = ? AND expires_at >= ?", false, now).Count(&summary.TotalPending)
 
 	var records []models.OTP
-	if err := base.Order("created_at DESC").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
+	if err := baseQ.Order("created_at DESC").Limit(limit).Offset(offset).Find(&records).Error; err != nil {
 		log.Printf("ERROR Stats query: %v", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "records query failed")
 	}
