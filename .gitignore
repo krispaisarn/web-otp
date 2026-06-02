@@ -1,0 +1,15 @@
+.env
+.env.local
+*.env.local
+.vercel/
+.claude/
+__pycache__/
+
+# TLS / OAuth2 secrets — never commit these
+*.pem
+credentials.json
+token.json
+
+# Compiled binaries
+gettoken
+server
