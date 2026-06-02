@@ -27,7 +27,7 @@ func init() {
 	if pem := loadPEM(); pem != "" {
 		pool := x509.NewCertPool()
 		if !pool.AppendCertsFromPEM([]byte(pem)) {
-			panic("db: TIDB_CA_CERT contains invalid PEM data")
+			panic("db: TIDB_CA_CERT is not valid PEM data")
 		}
 		cfg.RootCAs = pool
 	}
@@ -119,12 +119,16 @@ func normalizeDSN(dsn string) string {
 }
 
 func loadPEM() string {
-	if path := os.Getenv("TIDB_CA_CERT_FILE"); path != "" {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			panic(fmt.Sprintf("db: reading TIDB_CA_CERT_FILE %q: %v", path, err))
-		}
+	return envFile(os.Getenv("TIDB_CA_CERT"))
+}
+
+// envFile returns val as-is, or reads it as a file path if the value points to an existing file.
+func envFile(val string) string {
+	if val == "" {
+		return ""
+	}
+	if data, err := os.ReadFile(val); err == nil {
 		return strings.TrimSpace(string(data))
 	}
-	return os.Getenv("TIDB_CA_CERT")
+	return strings.TrimSpace(val)
 }

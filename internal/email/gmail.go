@@ -49,10 +49,10 @@ func SendOTP(ctx context.Context, to, code string) error {
 // oauthClient builds an HTTP client with Gmail credentials.
 //
 // Priority order:
-//  1. GMAIL_CREDENTIALS_FILE / GMAIL_CREDENTIALS  (Google credentials.json)
-//     + GMAIL_TOKEN_FILE     / GMAIL_TOKEN        (Google token.json)
+//  1. GMAIL_CREDENTIALS  (path to credentials.json or its raw JSON content)
+//     + GMAIL_TOKEN      (path to token.json or its raw JSON content)
 //  2. Individual env vars: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN
-//     (each also accepts a _FILE companion)
+//     (each accepts a path or raw value)
 func oauthClient(ctx context.Context) (*http.Client, error) {
 	if cfg := credentialsFromJSON(); cfg != nil {
 		tok := tokenFromJSON()
@@ -112,12 +112,14 @@ func tokenFromJSON() *oauth2.Token {
 	}
 }
 
-// envVal reads KEY_FILE (as a file path) first, then KEY directly.
+// envVal returns the env var value as-is, or reads it as a file path if it points to an existing file.
 func envVal(key string) string {
-	if path := os.Getenv(key + "_FILE"); path != "" {
-		if data, err := os.ReadFile(path); err == nil {
-			return strings.TrimSpace(string(data))
-		}
+	val := os.Getenv(key)
+	if val == "" {
+		return ""
 	}
-	return os.Getenv(key)
+	if data, err := os.ReadFile(val); err == nil {
+		return strings.TrimSpace(string(data))
+	}
+	return strings.TrimSpace(val)
 }
